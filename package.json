@@ -1,0 +1,36 @@
+{
+  "name": "insightdesk-crm",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "nodemon server/index.js",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "framer-motion": "^12.40.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "latest",
+    "mongoose": "^9.7.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "^7.17.0",
+    "recharts": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "latest",
+    "concurrently": "^10.0.3",
+    "nodemon": "^3.1.14",
+    "playwright": "^1.60.0",
+    "tailwindcss": "latest"
+  }
+}

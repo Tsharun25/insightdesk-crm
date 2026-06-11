@@ -8,13 +8,19 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
     ? "http://localhost:5000/api"
     : "/api";
 
-export async function authRequest(endpoint, payload) {
-  const response = await fetch(`${API_BASE_URL}/auth/${endpoint}`, {
-    method: "POST",
+async function request(path, options = {}) {
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("insightdesk_token")
+      : "";
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
     },
-    body: JSON.stringify(payload),
+    ...options,
   });
 
   const data = await response.json();
@@ -24,4 +30,33 @@ export async function authRequest(endpoint, payload) {
   }
 
   return data;
+}
+
+export async function authRequest(endpoint, payload) {
+  return request(`/auth/${endpoint}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getLeads() {
+  return request("/crm/leads");
+}
+
+export async function createLead(payload) {
+  return request("/crm/leads", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getDeals() {
+  return request("/crm/deals");
+}
+
+export async function createDeal(payload) {
+  return request("/crm/deals", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

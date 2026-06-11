@@ -32,9 +32,25 @@ Backend Express API files are here:
 - `server/index.js` - Express server entry point
 - `server/config/db.js` - MongoDB connection
 - `server/models/User.js` - user schema
+- `server/models/Lead.js` - lead schema
+- `server/models/Deal.js` - deal schema
 - `server/routes/authRoutes.js` - login/register APIs
+- `server/routes/crmRoutes.js` - leads/deals CRUD APIs
+- `server/services/authService.js` - shared auth logic for Express and Vercel
+- `server/services/crmService.js` - shared lead/deal logic for Express and Vercel
 - `server/.env` - local environment values
 - `server/.env.example` - safe example env file
+
+## Vercel API files
+
+Vercel serverless API functions are here:
+
+- `api/health.js` - production health check
+- `api/auth/register.js` - production register API
+- `api/auth/login.js` - production login API
+- `api/crm/leads.js` - production leads list/create API
+- `api/crm/deals.js` - production deals list/create API
+- `api/_utils.js` - shared Vercel request helpers
 
 Run server only:
 
@@ -73,30 +89,25 @@ That is the better choice because:
 - easier to manage branches, issues, and history
 - cleaner for portfolio and client handoff
 
-For Vercel, the best setup is:
+For Vercel, the best setup is now one project from the repo root.
 
-1. Create one Vercel project for the frontend using the repo root
-2. Create a second Vercel project for the backend using the `server` folder as the Root Directory
+That gives you:
 
-That gives you one GitHub repo, but two deploy targets.
-
-If you want only the frontend on Vercel, keep the backend local or move it to another host later.
+- one deployment for the React frontend
+- `/api/*` routes through Vercel functions
+- one GitHub repo and one production URL
 
 ### Vercel environment variables
 
-Frontend project:
-
-```bash
-VITE_API_URL=https://your-backend-domain.com/api
-```
-
-Backend project:
+Vercel project:
 
 ```bash
 MONGODB_URI=your-mongodb-connection-string
 JWT_SECRET=your-secret
-CLIENT_URL=https://your-frontend-domain.vercel.app
 ```
+
+If you later deploy the backend separately, set `VITE_API_URL` in the frontend
+project to the deployed backend API URL.
 
 ## MongoDB connection
 
@@ -140,4 +151,18 @@ Login:
 
 ```bash
 POST http://localhost:5000/api/auth/login
+```
+
+Leads:
+
+```bash
+GET http://localhost:5000/api/crm/leads
+POST http://localhost:5000/api/crm/leads
+```
+
+Deals:
+
+```bash
+GET http://localhost:5000/api/crm/deals
+POST http://localhost:5000/api/crm/deals
 ```

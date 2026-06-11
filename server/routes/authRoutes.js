@@ -1,28 +1,16 @@
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
-import jwt from "jsonwebtoken";
 import { Router } from "express";
-import User from "../models/User.js";
+import {
+  createToken,
+  loginUser,
+  normalizeEmail,
+  registerUser,
+  safeUser,
+} from "../services/authService.js";
 
 const router = Router();
 const memoryUsers = [];
-
-function createToken(user) {
-  return jwt.sign(
-    { id: user._id || user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" },
-  );
-}
-
-function safeUser(user) {
-  return {
-    id: user._id || user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-  };
-}
 
 function isDatabaseReady(req) {
   return Boolean(req.app.locals.dbReady);
@@ -36,8 +24,9 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Name, email, and password are required." });
     }
 
+    const normalizedEmail = normalizeEmail(email);
+
     if (!isDatabaseReady(req)) {
-      const normalizedEmail = email.toLowerCase().trim();
       const existingMemoryUser = memoryUsers.find(
         (user) => user.email === normalizedEmail,
       );
@@ -66,22 +55,10 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
-      return res.status(409).json({ message: "An account with this email already exists." });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, passwordHash });
-
-    return res.status(201).json({
-      user: safeUser(user),
-      token: createToken(user),
-      mode: "mongodb",
-    });
+    const data = await registerUser({ name, email, password });
+    return res.status(201).json(data);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 });
 
@@ -93,8 +70,9 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email and password are required." });
     }
 
+    const normalizedEmail = normalizeEmail(email);
+
     if (!isDatabaseReady(req)) {
-      const normalizedEmail = email.toLowerCase().trim();
       const user = memoryUsers.find((item) => item.email === normalizedEmail);
 
       if (!user) {
@@ -114,25 +92,10 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-
-    if (!passwordMatches) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-
-    return res.json({
-      user: safeUser(user),
-      token: createToken(user),
-      mode: "mongodb",
-    });
+    const data = await loginUser({ email, password });
+    return res.json(data);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 });
 

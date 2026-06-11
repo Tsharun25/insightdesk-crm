@@ -69,26 +69,29 @@ export default function Sidebar({ isOpen, onClose, onLogout }) {
             })}
           </nav>
   
-          <div className="mt-8 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-white shadow-xl shadow-emerald-500/20">
-            <p className="text-sm font-bold opacity-90">AI Sales Insight</p>
-            <h3 className="mt-2 text-xl font-black leading-tight">
-              14 deals need follow-up today
+          <div className="mt-8 rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-emerald-950 shadow-sm shadow-emerald-100">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+              Priority Queue
+            </p>
+            <h3 className="mt-2 text-lg font-black leading-snug">
+              14 follow-ups due today
             </h3>
-            <p className="mt-3 text-sm leading-6 text-emerald-50">
-              Prioritize enterprise leads to increase close rate this week.
+            <p className="mt-2 text-sm leading-6 text-emerald-800">
+              Review high-value opportunities that need attention before the
+              next sales cycle.
             </p>
             <Link
-              to="/analytics"
+              to="/leads"
               onClick={onClose}
-              className="mt-5 rounded-2xl bg-white px-4 py-3 text-sm font-black text-emerald-700"
+              className="mt-4 inline-flex rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
             >
-              View Recommendations
+              Review Leads
             </Link>
           </div>
   
           <div className="mt-auto space-y-2 border-t border-slate-200 pt-4">
             <Link
-              to="/reports"
+              to="/help"
               onClick={onClose}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950"
             >

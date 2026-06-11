@@ -10,6 +10,7 @@ import {
   FileText,
   Filter,
   Globe2,
+  LifeBuoy,
   LockKeyhole,
   Plus,
   Search,
@@ -19,6 +20,7 @@ import {
   Target,
   TrendingUp,
   UserPlus,
+  X,
 } from "lucide-react";
 import {
   Bar,
@@ -53,7 +55,13 @@ import {
   quickActions,
   reports,
 } from "./data/crmData";
-import { authRequest } from "./services/api";
+import {
+  authRequest,
+  createDeal as createDealRequest,
+  createLead as createLeadRequest,
+  getDeals,
+  getLeads,
+} from "./services/api";
 
 const statusClasses = {
   Hot: "bg-rose-50 text-rose-700",
@@ -137,21 +145,88 @@ function AppShell() {
               <Route path="/" element={<LandingPage />} />
               <Route
                 path="/login"
-                element={<AuthPage mode="login" onSuccess={handleAuthSuccess} />}
+                element={
+                  currentUser ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <AuthPage mode="login" onSuccess={handleAuthSuccess} />
+                  )
+                }
               />
               <Route
                 path="/register"
                 element={
-                  <AuthPage mode="register" onSuccess={handleAuthSuccess} />
+                  currentUser ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <AuthPage mode="register" onSuccess={handleAuthSuccess} />
+                  )
                 }
               />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/leads" element={<LeadsPage />} />
-              <Route path="/deals" element={<DealsPage />} />
-              <Route path="/customers" element={<CustomersPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leads"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <LeadsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/deals"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <DealsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/customers"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <CustomersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/help"
+                element={
+                  <ProtectedRoute currentUser={currentUser}>
+                    <HelpPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>
@@ -159,6 +234,14 @@ function AppShell() {
       </div>
     </div>
   );
+}
+
+function ProtectedRoute({ currentUser, children }) {
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
 function Page({ children }) {
@@ -195,6 +278,17 @@ function PageHeader({ eyebrow, title, copy, action }) {
 
 function AuthPage({ mode, onSuccess }) {
   const isRegister = mode === "register";
+  const authHighlights = isRegister
+    ? [
+        { label: "Pipeline visibility", value: "Live" },
+        { label: "Account security", value: "JWT" },
+        { label: "CRM workspace", value: "Ready" },
+      ]
+    : [
+        { label: "Revenue view", value: "Ready" },
+        { label: "Pipeline health", value: "Live" },
+        { label: "Secure session", value: "JWT" },
+      ];
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -215,9 +309,7 @@ function AuthPage({ mode, onSuccess }) {
       const data = await authRequest(isRegister ? "register" : "login", payload);
       onSuccess(data);
     } catch (requestError) {
-      setError(
-        `${requestError.message} If this is a connection error, run npm run dev:full and set server/.env first.`,
-      );
+      setError(requestError.message || "Unable to complete the request.");
     } finally {
       setLoading(false);
     }
@@ -229,41 +321,79 @@ function AuthPage({ mode, onSuccess }) {
 
   return (
     <Page>
-      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/70 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="bg-slate-950 p-8 text-white sm:p-10">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">
-            Secure Workspace
-          </p>
-          <h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-            {isRegister ? "Create your InsightDesk account." : "Welcome back to InsightDesk."}
-          </h2>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            This form connects to the Express API in the server folder. User
-            accounts are saved in MongoDB when the backend is running.
-          </p>
-          <div className="mt-8 space-y-4">
-            <TrustRow
-              icon={LockKeyhole}
-              title="JWT auth ready"
-              copy="Login and register endpoints return a token and user profile."
-              dark
-            />
-            <TrustRow
-              icon={Globe2}
-              title="MongoDB storage"
-              copy="Set MONGODB_URI in server/.env to connect your database."
-              dark
-            />
+      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/70 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="flex min-h-[560px] flex-col justify-between bg-slate-950 p-8 text-white sm:p-10">
+          <div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-3 text-left"
+              aria-label="InsightDesk home"
+            >
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-400 text-slate-950">
+                <Sparkles size={20} />
+              </span>
+              <span>
+                <span className="block text-lg font-black leading-none">
+                  InsightDesk
+                </span>
+                <span className="mt-1 block text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
+                  Sales CRM
+                </span>
+              </span>
+            </Link>
+
+            <div className="mt-16">
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">
+                Secure Workspace
+              </p>
+              <h2 className="mt-4 max-w-sm text-3xl font-black tracking-tight sm:text-4xl">
+                {isRegister
+                  ? "Create your revenue command center."
+                  : "Welcome back to your CRM workspace."}
+              </h2>
+              <p className="mt-5 max-w-md text-sm leading-7 text-slate-300">
+                Manage leads, deals, revenue insights, and customer activity
+                from one focused sales workspace.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-3">
+            {authHighlights.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3"
+              >
+                <span className="text-sm font-bold text-slate-300">
+                  {item.label}
+                </span>
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-200">
+                  {item.value}
+                </span>
+              </div>
+            ))}
+            <p className="pt-2 text-xs font-semibold leading-6 text-slate-400">
+              Protected access for sales teams, account managers, and revenue
+              leaders.
+            </p>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 sm:p-10">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col justify-center p-6 sm:p-10 lg:p-12"
+        >
           <div className="mb-7">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">
               {isRegister ? "Register" : "Login"}
             </p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+            <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
               {isRegister ? "Start a new workspace" : "Access your dashboard"}
             </h3>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+              {isRegister
+                ? "Create an account to start tracking leads and deals."
+                : "Sign in to continue managing your sales pipeline."}
+            </p>
           </div>
           <div className="space-y-4">
             {isRegister && (
@@ -272,8 +402,9 @@ function AuthPage({ mode, onSuccess }) {
                 <input
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400"
+                  className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                   placeholder="Demo Admin"
+                  autoComplete="name"
                   required
                 />
               </label>
@@ -284,8 +415,9 @@ function AuthPage({ mode, onSuccess }) {
                 type="email"
                 value={form.email}
                 onChange={(event) => updateField("email", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400"
+                className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                 placeholder="admin@insightdesk.com"
+                autoComplete="email"
                 required
               />
             </label>
@@ -295,9 +427,10 @@ function AuthPage({ mode, onSuccess }) {
                 type="password"
                 value={form.password}
                 onChange={(event) => updateField("password", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-emerald-400"
+                className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                 placeholder="Minimum 6 characters"
                 minLength={6}
+                autoComplete={isRegister ? "new-password" : "current-password"}
                 required
               />
             </label>
@@ -310,8 +443,9 @@ function AuthPage({ mode, onSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white shadow-lg shadow-slate-900/20 disabled:opacity-60"
+            className="mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-black text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:translate-y-0 disabled:opacity-60"
           >
+            {isRegister ? <UserPlus size={18} /> : <LockKeyhole size={18} />}
             {loading ? "Please wait..." : isRegister ? "Create Account" : "Login"}
           </button>
           <p className="mt-5 text-center text-sm font-bold text-slate-500">
@@ -462,20 +596,57 @@ function QuickActions() {
 }
 
 function LeadsPage() {
+  const [leadRows, setLeadRows] = useState(leads);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [sort, setSort] = useState("score");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [savingLead, setSavingLead] = useState(false);
+  const [leadError, setLeadError] = useState("");
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    name: "",
+    company: "",
+    email: "",
+    score: "70",
+    source: "Website",
+    status: "New",
+  });
   const perPage = 5;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 450);
-    return () => window.clearTimeout(timer);
+    let isMounted = true;
+
+    async function loadLeads() {
+      try {
+        setLoading(true);
+        setLeadError("");
+        const data = await getLeads();
+
+        if (isMounted) {
+          setLeadRows(data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setLeadError(error.message);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadLeads();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filteredLeads = useMemo(() => {
-    return leads
+    return leadRows
       .filter((lead) => {
         const matchesQuery = `${lead.name} ${lead.company} ${lead.email}`
           .toLowerCase()
@@ -488,26 +659,62 @@ function LeadsPage() {
           ? b.score - a.score
           : a.company.localeCompare(b.company),
       );
-  }, [query, status, sort]);
+  }, [leadRows, query, status, sort]);
 
   const pageCount = Math.ceil(filteredLeads.length / perPage) || 1;
   const visibleLeads = filteredLeads.slice((page - 1) * perPage, page * perPage);
+
+  function updateLeadForm(field, value) {
+    setLeadForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleCreateLead(event) {
+    event.preventDefault();
+
+    const payload = {
+      name: leadForm.name.trim(),
+      company: leadForm.company.trim(),
+      email: leadForm.email.trim().toLowerCase(),
+      score: Number(leadForm.score),
+      source: leadForm.source,
+      status: leadForm.status,
+    };
+
+    try {
+      setSavingLead(true);
+      setLeadError("");
+      const newLead = await createLeadRequest(payload);
+      setLeadRows((current) => [newLead, ...current]);
+      setQuery("");
+      setStatus("All");
+      setSort("score");
+      setPage(1);
+      setShowLeadForm(false);
+      setLeadForm({
+        name: "",
+        company: "",
+        email: "",
+        score: "70",
+        source: "Website",
+        status: "New",
+      });
+    } catch (error) {
+      setLeadError(error.message);
+    } finally {
+      setSavingLead(false);
+    }
+  }
 
   return (
     <Page>
       <PageHeader
         eyebrow="Lead Management"
         title="Prioritize every opportunity by fit, source, and intent."
-        copy="Search, filter, sort, and page through realistic SaaS lead data using local React state."
+        copy="Filter qualified leads, compare account fit, and focus the team on the opportunities most likely to convert."
         action={
           <button
             type="button"
-            onClick={() => {
-              setQuery("");
-              setStatus("New");
-              setSort("score");
-              setPage(1);
-            }}
+            onClick={() => setShowLeadForm(true)}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/20"
           >
             <Plus size={18} />
@@ -515,6 +722,11 @@ function LeadsPage() {
           </button>
         }
       />
+      {leadError && (
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+          {leadError}
+        </div>
+      )}
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">
         <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_180px_180px]">
           <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -628,29 +840,196 @@ function LeadsPage() {
           </>
         )}
       </section>
+      <Modal
+        open={showLeadForm}
+        title="Add new lead"
+        onClose={() => setShowLeadForm(false)}
+      >
+        <form onSubmit={handleCreateLead} className="space-y-4">
+          <FormInput
+            label="Name"
+            value={leadForm.name}
+            onChange={(value) => updateLeadForm("name", value)}
+            placeholder="Avery Stone"
+            required
+          />
+          <FormInput
+            label="Company"
+            value={leadForm.company}
+            onChange={(value) => updateLeadForm("company", value)}
+            placeholder="Apex Studio"
+            required
+          />
+          <FormInput
+            label="Email"
+            type="email"
+            value={leadForm.email}
+            onChange={(value) => updateLeadForm("email", value)}
+            placeholder="avery@company.com"
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FormInput
+              label="Score"
+              type="number"
+              min="1"
+              max="100"
+              value={leadForm.score}
+              onChange={(value) => updateLeadForm("score", value)}
+              required
+            />
+            <FormSelect
+              label="Source"
+              value={leadForm.source}
+              onChange={(value) => updateLeadForm("source", value)}
+              options={["Website", "Referral", "LinkedIn", "Webinar", "Ads"]}
+            />
+            <FormSelect
+              label="Status"
+              value={leadForm.status}
+              onChange={(value) => updateLeadForm("status", value)}
+              options={["New", "Hot", "Qualified", "Nurture"]}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={savingLead}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white shadow-lg shadow-slate-900/20"
+          >
+            <Plus size={18} />
+            {savingLead ? "Saving..." : "Save Lead"}
+          </button>
+        </form>
+      </Modal>
     </Page>
   );
 }
 
 function DealsPage() {
+  const [columns, setColumns] = useState(dealColumns);
+  const [loadingDeals, setLoadingDeals] = useState(true);
+  const [savingDeal, setSavingDeal] = useState(false);
+  const [dealError, setDealError] = useState("");
+  const [showDealForm, setShowDealForm] = useState(false);
+  const [dealForm, setDealForm] = useState({
+    title: "",
+    company: "",
+    owner: "",
+    amount: "",
+    stage: "New",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDeals() {
+      try {
+        setLoadingDeals(true);
+        setDealError("");
+        const data = await getDeals();
+
+        if (isMounted) {
+          setColumns(data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setDealError(error.message);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingDeals(false);
+        }
+      }
+    }
+
+    loadDeals();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  function updateDealForm(field, value) {
+    setDealForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleCreateDeal(event) {
+    event.preventDefault();
+
+    const payload = {
+      title: dealForm.title.trim(),
+      company: dealForm.company.trim(),
+      owner: dealForm.owner.trim(),
+      amount: dealForm.amount.startsWith("$")
+        ? dealForm.amount.trim()
+        : `$${dealForm.amount.trim()}`,
+      stage: dealForm.stage,
+    };
+
+    try {
+      setSavingDeal(true);
+      setDealError("");
+      const newDeal = await createDealRequest(payload);
+      setColumns((current) =>
+        current.map((column) =>
+          column.stage === newDeal.stage
+            ? { ...column, deals: [newDeal, ...column.deals] }
+            : column,
+        ),
+      );
+      setShowDealForm(false);
+      setDealForm({
+        title: "",
+        company: "",
+        owner: "",
+        amount: "",
+        stage: "New",
+      });
+    } catch (error) {
+      setDealError(error.message);
+    } finally {
+      setSavingDeal(false);
+    }
+  }
+
   return (
     <Page>
       <PageHeader
         eyebrow="Deal Pipeline"
         title="Move revenue from first signal to closed won."
-        copy="A polished Kanban-style board for sales pipeline storytelling, stage health, and ownership."
+        copy="Track ownership, stage value, and next steps across every active opportunity in the pipeline."
         action={
-          <Link
-            to="/leads"
+          <button
+            type="button"
+            onClick={() => setShowDealForm(true)}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/20"
           >
             <Plus size={18} />
             Create Deal
-          </Link>
+          </button>
         }
       />
+      {dealError && (
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+          {dealError}
+        </div>
+      )}
       <section className="grid gap-4 xl:grid-cols-5">
-        {dealColumns.map((column) => (
+        {loadingDeals ? (
+          Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-80 animate-pulse rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70"
+            >
+              <div className="h-5 w-24 rounded-full bg-slate-200" />
+              <div className="mt-8 space-y-4">
+                <div className="h-28 rounded-2xl bg-slate-100" />
+                <div className="h-28 rounded-2xl bg-slate-100" />
+              </div>
+            </div>
+          ))
+        ) : (
+          columns.map((column) => (
           <div
             key={column.stage}
             className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70"
@@ -690,8 +1069,61 @@ function DealsPage() {
               ))}
             </div>
           </div>
-        ))}
+          ))
+        )}
       </section>
+      <Modal
+        open={showDealForm}
+        title="Create new deal"
+        onClose={() => setShowDealForm(false)}
+      >
+        <form onSubmit={handleCreateDeal} className="space-y-4">
+          <FormInput
+            label="Deal title"
+            value={dealForm.title}
+            onChange={(value) => updateDealForm("title", value)}
+            placeholder="Enterprise CRM rollout"
+            required
+          />
+          <FormInput
+            label="Company"
+            value={dealForm.company}
+            onChange={(value) => updateDealForm("company", value)}
+            placeholder="Apex Studio"
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormInput
+              label="Owner"
+              value={dealForm.owner}
+              onChange={(value) => updateDealForm("owner", value)}
+              placeholder="Sarah"
+              required
+            />
+            <FormInput
+              label="Amount"
+              value={dealForm.amount}
+              onChange={(value) => updateDealForm("amount", value)}
+              placeholder="18K"
+              required
+            />
+          </div>
+          <FormSelect
+            label="Stage"
+            value={dealForm.stage}
+            onChange={(value) => updateDealForm("stage", value)}
+            options={columns.map((column) => column.stage)}
+          />
+          <button
+            type="submit"
+            disabled={savingDeal}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-500/20"
+          >
+            <Plus size={18} />
+            {savingDeal ? "Saving..." : "Save Deal"}
+          </button>
+        </form>
+      </Modal>
     </Page>
   );
 }
@@ -702,7 +1134,7 @@ function CustomersPage() {
       <PageHeader
         eyebrow="Customer Intelligence"
         title="Track account value, health, plan, and recent activity."
-        copy="Customer profile cards make the CRM feel operational while staying portfolio-friendly and clean."
+        copy="Monitor customer health, renewal signals, account value, and recent touchpoints from one view."
       />
       <section className="grid min-w-0 gap-4 lg:grid-cols-3">
         {customerProfiles.map((customer) => (
@@ -749,7 +1181,7 @@ function AnalyticsPage() {
       <PageHeader
         eyebrow="Analytics"
         title="Revenue, conversion, source mix, and acquisition trends."
-        copy="A dashboard-grade analytics view using Recharts, designed for executive scan speed."
+        copy="Review performance trends, conversion movement, and acquisition channels for faster revenue decisions."
       />
       <section className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="Revenue Growth">
@@ -810,7 +1242,7 @@ function ReportsPage() {
       <PageHeader
         eyebrow="Reports"
         title="Export polished summaries for monthly and quarterly reviews."
-        copy="Report cards, KPI summary, and export actions make this feel like a shippable SaaS workflow."
+        copy="Prepare revenue summaries, pipeline reviews, and customer health snapshots for leadership updates."
         action={
           <button
             type="button"
@@ -998,7 +1430,7 @@ function SettingsPage() {
       <PageHeader
         eyebrow="Settings"
         title="Workspace preferences for a sales operations team."
-        copy="Mock configuration controls round out the product feel without adding backend complexity."
+        copy="Control team notifications, pipeline alerts, automation preferences, and workspace communication."
       />
       <section className="grid gap-4 lg:grid-cols-2">
         {Object.keys(settings).map((setting) => (
@@ -1029,6 +1461,139 @@ function SettingsPage() {
         ))}
       </section>
     </Page>
+  );
+}
+
+function HelpPage() {
+  const helpTopics = [
+    {
+      title: "Getting started",
+      copy: "Set up your workspace, invite team members, and review the core dashboard workflow.",
+      action: "Read guide",
+    },
+    {
+      title: "Pipeline support",
+      copy: "Understand lead scoring, deal stages, follow-up queues, and customer health signals.",
+      action: "View workflow",
+    },
+    {
+      title: "Contact support",
+      copy: "Send account, billing, or technical questions to the InsightDesk support team.",
+      action: "Open ticket",
+    },
+  ];
+
+  return (
+    <Page>
+      <PageHeader
+        eyebrow="Help Center"
+        title="Find guidance for your CRM workspace."
+        copy="Access onboarding resources, sales workflow guidance, and support options for your team."
+      />
+      <section className="grid gap-4 lg:grid-cols-3">
+        {helpTopics.map((topic) => (
+          <article
+            key={topic.title}
+            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70"
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <LifeBuoy size={20} />
+            </div>
+            <h3 className="mt-4 text-lg font-black text-slate-950">
+              {topic.title}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {topic.copy}
+            </p>
+            <button
+              type="button"
+              className="mt-5 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/20"
+            >
+              {topic.action}
+            </button>
+          </article>
+        ))}
+      </section>
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70">
+        <h3 className="text-xl font-black text-slate-950">Support details</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <MiniPanel label="Response time" value="24h" />
+          <MiniPanel label="Support channel" value="Email" />
+          <MiniPanel label="Workspace status" value="Healthy" />
+        </div>
+      </section>
+    </Page>
+  );
+}
+
+function Modal({ open, title, onClose, children }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/20">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h3 className="text-xl font-black text-slate-950">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+            aria-label="Close dialog"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FormInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  required = false,
+  min,
+  max,
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-black text-slate-700">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        required={required}
+        min={min}
+        max={max}
+        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+      />
+    </label>
+  );
+}
+
+function FormSelect({ label, value, onChange, options }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-black text-slate-700">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

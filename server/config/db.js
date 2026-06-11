@@ -8,6 +8,10 @@ export async function connectDB() {
     return false;
   }
 
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+
   try {
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 5000,

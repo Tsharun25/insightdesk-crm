@@ -1,16 +1,82 @@
-# React + Vite
+# InsightDesk CRM
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+InsightDesk CRM is a React + Vite sales dashboard with Express/MongoDB auth, database-backed leads/deals, and Vercel-ready API functions.
 
-Currently, two official plugins are available:
+## Local Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev:full
+```
 
-## React Compiler
+Frontend:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+http://localhost:5173
+```
 
-## Expanding the ESLint configuration
+Backend health:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+http://localhost:5000/api/health
+```
+
+## Environment Variables
+
+Create or update `server/.env` for local development:
+
+```bash
+PORT=5000
+CLIENT_URL=http://localhost:5173
+MONGODB_URI=your-mongodb-connection-string
+JWT_SECRET=your-strong-secret
+```
+
+For Vercel, add these variables in Project Settings:
+
+```bash
+MONGODB_URI=your-mongodb-connection-string
+JWT_SECRET=your-strong-secret
+```
+
+If the backend is deployed separately from the frontend, also add this to the frontend project:
+
+```bash
+VITE_API_URL=https://your-backend-domain.com/api
+```
+
+## Vercel Deployment
+
+This repo can be deployed as one Vercel project:
+
+- Vite builds the frontend into `dist`
+- `/api/health`, `/api/auth/*`, and `/api/crm/*` run as Vercel API functions
+- SPA routing is handled by `vercel.json`
+
+Recommended Vercel settings:
+
+```bash
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+## Scripts
+
+```bash
+npm run dev       # frontend only
+npm run server    # local Express API only
+npm run dev:full  # frontend + backend
+npm run build     # production build
+```
+
+## API Routes
+
+```bash
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/crm/leads
+POST /api/crm/leads
+GET  /api/crm/deals
+POST /api/crm/deals
+```
